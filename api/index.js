@@ -8,13 +8,13 @@ try {
   app = require('../backend/src/app');
 } catch (err) {
   console.error('Failed to load app:', err);
-  // Return a minimal handler that shows the error
+  // Return a minimal handler that shows the error (always show for debugging)
   app = (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server failed to start',
       error: err.message,
-      stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+      stack: err.stack,
     });
   };
 }
