@@ -69,8 +69,23 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileUploadRoutes);
 
 // ─── Health Check ────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Server is running', timestamp: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  const status = { success: true, message: 'Server is running', timestamp: new Date().toISOString() };
+  try {
+    const prisma = require('./config/database');
+    await prisma.$queryRaw`SELECT 1`;
+    status.database = 'connected';
+  } catch (err) {
+    status.database = 'error: ' + err.message;
+    status.success = false;
+  }
+  status.env = {
+    NODE_ENV: process.env.NODE_ENV || 'not set',
+    DATABASE_URL: process.env.DATABASE_URL ? 'set (' + process.env.DATABASE_URL.substring(0, 20) + '...)' : 'NOT SET',
+    JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ? 'set' : 'NOT SET',
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ? 'set' : 'NOT SET',
+  };
+  res.json(status);
 });
 
 // ─── 404 Handler ─────────────────────────────────────
