@@ -4,14 +4,20 @@ const fs = require('fs');
 const config = require('../config');
 const AppError = require('../utils/AppError');
 
-// Ensure upload directory exists
-const uploadDir = path.resolve(config.upload.dir);
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Use /tmp on serverless (read-only filesystem), otherwise use configured dir
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadDir = isServerless ? '/tmp/uploads' : path.resolve(config.upload.dir);
+
+// Ensure upload directory exists (lazy — only create when needed)
+const ensureUploadDir = () => {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+};
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    ensureUploadDir();
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {

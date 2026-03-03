@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Only load dotenv if not already loaded by Vercel env vars
+if (!process.env.VERCEL) {
+  require('dotenv').config();
+}
 
 const config = {
   env: process.env.NODE_ENV || 'development',

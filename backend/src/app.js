@@ -41,7 +41,9 @@ if (config.env === 'development') {
 }
 
 // ─── Static Files (uploads) ──────────────────────────
-app.use('/uploads', express.static(path.resolve(config.upload.dir)));
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadsPath = isServerless ? '/tmp/uploads' : path.resolve(config.upload.dir);
+app.use('/uploads', express.static(uploadsPath));
 
 // ─── API Routes ──────────────────────────────────────
 const authRoutes = require('./modules/auth/auth.routes');
