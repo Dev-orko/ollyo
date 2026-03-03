@@ -1,0 +1,242 @@
+// Prisma schema for Business Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum OpportunityStage {
+  LEAD
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum CertificationType {
+  HALAL
+  KOSHER
+  ISO
+  FSSC
+  OTHER
+}
+
+enum ComplianceLogType {
+  ALLERGEN
+  AUDIT
+  DOCUMENT
+  FEEDBACK
+  NON_CONFORMANCE
+  RISK
+  TRAINING
+  RECALL
+}
+
+// ─── Models ──────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STAFF)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  complianceLogs ComplianceLog[]
+  auditLogs      AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  notes     String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders        Order[]
+  opportunities Opportunity[]
+
+  @@index([name])
+  @@index([email])
+  @@index([isDeleted])
+  @@map("customers")
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products       Product[]
+  certifications Certification[]
+
+  @@index([name])
+  @@index([isDeleted])
+  @@map("suppliers")
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  name        String
+  sku         String        @unique
+  description String?
+  supplierId  String
+  status      ProductStatus @default(ACTIVE)
+  isDeleted   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  supplier   Supplier    @relation(fields: [supplierId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([sku])
+  @@index([supplierId])
+  @@index([status])
+  @@index([isDeleted])
+  @@map("products")
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  customerId String
+  orderDate  DateTime    @default(now())
+  status     OrderStatus @default(PENDING)
+  totalAmount Decimal?   @db.Decimal(12, 2)
+  notes      String?
+  isDeleted  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  customer Customer    @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([isDeleted])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(12, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Opportunity {
+  id         String           @id @default(uuid())
+  customerId String
+  stage      OpportunityStage @default(LEAD)
+  value      Decimal?         @db.Decimal(12, 2)
+  notes      String?
+  isDeleted  Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([stage])
+  @@index([isDeleted])
+  @@map("opportunities")
+}
+
+model Certification {
+  id          String            @id @default(uuid())
+  supplierId  String
+  type        CertificationType
+  issueDate   DateTime
+  expiryDate  DateTime
+  documentUrl String?
+  isDeleted   Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId])
+  @@index([expiryDate])
+  @@index([type])
+  @@index([isDeleted])
+  @@map("certifications")
+}
+
+model ComplianceLog {
+  id                String            @id @default(uuid())
+  type              ComplianceLogType
+  relatedEntityType String?
+  relatedEntityId   String?
+  description       String
+  createdById       String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([type])
+  @@index([createdById])
+  @@index([relatedEntityType, relatedEntityId])
+  @@map("compliance_logs")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String?
+  userId     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
